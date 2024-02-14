@@ -14,6 +14,7 @@ This is a program for converting Audio and Video files into another type based o
 
 ## How to Use
 ### Windows
+0. Use the `launch.bat` file. Or...
 1. Open the command prompt or powershell.
 2. Navigate using `cd` to the root folder of the program where `app.py` is located. Ex: `cd C:\Users\YourName\Documents\FileConverter`
 3. Activate the Virtual Environment with `.\.venv\Scripts\activate`. You should now see (venv) within your terminal.
