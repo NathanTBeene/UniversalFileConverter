@@ -1,0 +1,26 @@
+# Universal File Converter
+This is a program for converting Audio and Video files into another type based on preset conversions using the FFMPEG system.
+
+## Requirements
+- Python 3.12+
+- IDE To run the app.py file.
+- [FFMPEG](https://ffmpeg.org/download.html#build-windows) or [Windows Pre-Packaged FFMPEG](https://github.com/BtbN/FFmpeg-Builds/releases)
+
+### FFMPEG Install Instructions
+[Instructions Here on the FFMPEG-Python Documentation](https://github.com/kkroening/ffmpeg-python)
+1. Simply download and place into a folder where you can remember.
+2. Update path with the FFMPEG installation /bin folder.
+3. You can check your version by running `ffmpeg` in your terminal to check the version.
+
+## How To Use
+1. Open folder in your IDE of choice.
+2. Activate Virtual Environment or install `ffmpeg-python` and `ttkboostrap`
+3. Run `app.py`
+
+### Exporting
+Files that are exported go in the `./Export` folder that comes with the source code. There are two different exporting modes:
+##### Single Export
+Single files that are converted will be simply exported into the directory.
+##### Batch Export
+Batch files will be placed in a Batch folder created when you convert.
+Different instances of a batch will create another batch folder.
