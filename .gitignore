@@ -1,3 +1,2 @@
-__pycache__/controller.cpython-312.pyc
-__pycache__/editorgui.cpython-312.pyc
-__pycache__/information.cpython-312.pyc
+__pycache__/*
+.venv/*
