@@ -12,15 +12,28 @@ This is a program for converting Audio and Video files into another type based o
 2. Update path with the FFMPEG installation /bin folder.
 3. You can check your version by running `ffmpeg` in your terminal to check the version.
 
-## How To Use
+## How to Use
+### Windows
+1. Open the command prompt or powershell.
+2. Navigate using `cd` to the root folder of the program where `app.py` is located. Ex: `cd C:\Users\YourName\Documents\FileConverter`
+3. Activate the Virtual Environment with `.\.venv\Scripts\activate`. You should now see (venv) within your terminal.
+4. run `app.py` with `python app.py`
+
+### macOC/Linux
+1. Open the terminal
+2. Navigate using `cd` to the root folder of the program where `app.py` is located.
+3. Activate the Virtual Environment with `.\.venv\Scripts\activate`. You should now see (venv) within your terminal.
+4. run `app.py` with `python3 app.py`
+
+### IDE (VS Code, PyCharm)
 1. Open folder in your IDE of choice.
-2. Activate Virtual Environment or install `ffmpeg-python` and `ttkboostrap`
+2. Activate Virtual Environment or install `ffmpeg-python`, `ffmpeg_progress_yield` and `ttkboostrap`
 3. Run `app.py`
 
-### Exporting
+## Exporting
 Files that are exported go in the `./Export` folder that comes with the source code. There are two different exporting modes:
-##### Single Export
+### Single Export
 Single files that are converted will be simply exported into the directory.
-##### Batch Export
+### Batch Export
 Batch files will be placed in a Batch folder created when you convert.
 Different instances of a batch will create another batch folder.
