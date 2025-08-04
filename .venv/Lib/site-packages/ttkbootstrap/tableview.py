@@ -433,6 +433,7 @@ class Tableview(ttk.Frame):
             rowdata=[],
             paginated=False,
             searchable=False,
+            yscrollbar=False,
             autofit=False,
             autoalign=True,
             stripecolor=None,
@@ -481,6 +482,10 @@ class Tableview(ttk.Frame):
                 bar. Currently, the search method looks for any row
                 that contains the search text. The filtered results
                 are displayed in the table view.
+                
+            yscrollbar (bool):
+                If `True`, a vertical scrollbar will be created to the right
+                of the table.
 
             autofit (bool):
                 If `True`, the table columns will be automatically sized
@@ -530,6 +535,7 @@ class Tableview(ttk.Frame):
         self._pagesize = tk.IntVar(value=pagesize)
         self._paginated = paginated
         self._searchable = searchable
+        self._yscrollbar = yscrollbar
         self._stripecolor = stripecolor
         self._autofit = autofit
         self._autoalign = autoalign
@@ -695,9 +701,7 @@ class Tableview(ttk.Frame):
     def insert_row(self, index=END, values=[]) -> TableRow:
         """Insert a row into the tableview at index.
 
-        You must call `Tableview.load_table_data()` to update the
-        current view. If the data is filtered, you will need to call
-        `Tableview.load_table_data(clear_filters=True)`.
+        Inserting a row will reload the table data and clear the applied filters.
 
         Parameters:
 
@@ -723,7 +727,8 @@ class Tableview(ttk.Frame):
 
         # validate the index
         if len(values) == 0:
-            return
+            print('[TableView] Cannot insert. No values found.')
+            return None
         if index == END:
             index = -1
         elif index > rowcount - 1:
@@ -735,6 +740,8 @@ class Tableview(ttk.Frame):
         else:
             self._tablerows.insert(index, record)
 
+        self.load_table_data(self.is_filtered)
+
         return record
 
     def insert_rows(self, index, rowdata):
@@ -742,6 +749,10 @@ class Tableview(ttk.Frame):
         not exist then the records are appended to the end of the table.
         You can also use the string 'end' to append records at the end
         of the table.
+
+        Rows are inserted in reverse order.
+
+        Inserting rows will rebuild the table view and clear the filters.
 
         Parameters:
 
@@ -1020,7 +1031,10 @@ class Tableview(ttk.Frame):
     def unload_table_data(self):
         """Unload all data from the table"""
         for row in self.tablerows_visible:
-            row.hide()
+            tmp_row_id = row.iid
+            for tmp in self._tablerows:
+                if tmp_row_id == tmp.iid:
+                    row.hide()
         self.tablerows_visible.clear()
 
     def load_table_data(self, clear_filters=False):
@@ -2075,16 +2089,27 @@ class Tableview(ttk.Frame):
         """Build the data table"""
         if self._searchable:
             self._build_search_frame()
+            
+        table_frame = ttk.Frame(self)
+        table_frame.pack(fill=BOTH, expand=YES, side=TOP)
 
         self.view = ttk.Treeview(
-            master=self,
+            master=table_frame,
             columns=[x for x in range(len(coldata))],
             height=self._height,
             selectmode=EXTENDED,
             show=HEADINGS,
             bootstyle=f"{bootstyle}-table",
         )
-        self.view.pack(fill=BOTH, expand=YES, side=TOP)
+        self.view.pack(fill=BOTH, expand=YES, side=LEFT)
+        
+        if self._yscrollbar:
+            self.ybar = ttk.Scrollbar(
+                master=table_frame, command=self.view.yview, orient=VERTICAL
+            )
+            self.ybar.pack(fill=Y, side=RIGHT)
+            self.view.configure(yscrollcommand=self.ybar.set)
+        
         self.hbar = ttk.Scrollbar(
             master=self, command=self.view.xview, orient=HORIZONTAL
         )

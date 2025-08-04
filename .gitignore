@@ -1,2 +1,7 @@
 __pycache__/*
-Export/*
+Export/
+testing/
+*.pyc
+__pycache__/
+.vscode/
+.venv

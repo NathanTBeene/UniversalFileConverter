@@ -1,5 +1,5 @@
 """
-    This module contains a class of the same name that wraps the 
+    This module contains a class of the same name that wraps the
     tkinter.Tk and ttkbootstrap.style.Style classes to provide a more
     consolidated api for initial application startup.
 """
@@ -15,8 +15,9 @@ def get_default_root(what=None):
     """Returns the default root if it has been created, otherwise
     returns a new instance."""
     if not tkinter._support_default_root:
-        raise RuntimeError("No master specified and tkinter is "
-                           "configured to not support default root")
+        raise RuntimeError(
+            "No master specified and tkinter is "
+            "configured to not support default root")
     if not tkinter._default_root:
         if what:
             raise RuntimeError(f"Too early to {what}: no default root window")
@@ -29,14 +30,14 @@ def apply_class_bindings(window: tkinter.Widget):
     """Add class level event bindings in application"""
     for className in ["TEntry", "TSpinbox", "TCombobox", "Text"]:
         window.bind_class(
-            className=className, 
-            sequence="<Configure>", 
+            className=className,
+            sequence="<Configure>",
             func=on_disabled_readonly_state,
             add="+")
 
         for sequence in ["<Control-a>", "<Control-A>"]:
             window.bind_class(
-                className=className, 
+                className=className,
                 sequence=sequence,
                 func=on_select_all)
 
@@ -51,8 +52,9 @@ def apply_class_bindings(window: tkinter.Widget):
         except KeyError:
             window.tk.call(event.widget, 'invoke')
 
-    window.bind_class("TButton", "<Key-Return>", button_default_binding,
-                      add="+")
+    window.bind_class(
+        "TButton", "<Key-Return>", button_default_binding,
+        add="+")
     window.bind_class("TButton", "<KP_Enter>", button_default_binding, add="+")
 
 
@@ -62,8 +64,16 @@ def apply_all_bindings(window: tkinter.Widget):
     window.bind_all('<Destroy>', lambda e: Publisher.unsubscribe(e.widget))
 
 
+def on_visibility(event):
+    """Set Window or Toplevel alpha value on Visibility (X11)"""
+    widget = event.widget
+    if isinstance(widget, (Window, Toplevel)) and widget.alpha_bind:
+        widget.unbind(widget.alpha_bind)
+        widget.attributes("-alpha", widget.alpha)
+
+
 def on_disabled_readonly_state(event):
-    """Change the cursor of entry type widgets to 'arrow' if in a 
+    """Change the cursor of entry type widgets to 'arrow' if in a
     disabled or readonly state."""
     try:
         widget = event.widget
@@ -88,7 +98,7 @@ def on_map_child(event):
     event on the parent"""
     widget: tkinter.Widget = event.widget
     try:
-        if widget.master is None: # root widget
+        if widget.master is None:  # root widget
             return
         else:
             widget.master.event_generate('<<MapChild>>')
@@ -98,17 +108,16 @@ def on_map_child(event):
 
 
 def on_select_all(event):
-    """Callback to select all text in the input widget when an event is
-    executed."""
+    """Callback to select all text in Entry or Text widget when Ctrl+A is pressed."""
     widget = event.widget
-    if widget.__class__.__name__ == "Text":
+
+    if isinstance(widget, tkinter.Text):
         widget.tag_add(SEL, "1.0", END)
         widget.mark_set(INSERT, END)
-        widget.see(END)
-    else:
-        widget.select_range(0, END)
+        widget.see(INSERT)
+    elif isinstance(widget, tkinter.Entry):
+        widget.selection_range(0, END)
         widget.icursor(END)
-    return 'break'    
 
 
 class Window(tkinter.Tk):
@@ -129,20 +138,21 @@ class Window(tkinter.Tk):
     """
 
     def __init__(
-        self,
-        title="ttkbootstrap",
-        themename="litera",
-        iconphoto='',
-        size=None,
-        position=None,
-        minsize=None,
-        maxsize=None,
-        resizable=None,
-        hdpi=True,
-        scaling=None,
-        transient=None,
-        overrideredirect=False,
-        alpha=1.0,
+            self,
+            title="ttkbootstrap",
+            themename="litera",
+            iconphoto='',
+            size=None,
+            position=None,
+            minsize=None,
+            maxsize=None,
+            resizable=None,
+            hdpi=True,
+            scaling=None,
+            transient=None,
+            overrideredirect=False,
+            alpha=1.0,
+            **kwargs,
     ):
         """
         Parameters:
@@ -215,11 +225,15 @@ class Window(tkinter.Tk):
                 On Windows, specifies the alpha transparency level of the
                 toplevel. Where not supported, alpha remains at 1.0. Internally,
                 this is processed as `Toplevel.attributes('-alpha', alpha)`.
+
+            **kwargs:
+                Any other keyword arguments that are passed through to tkinter.Tk() constructor
+                List of available keywords available at: https://docs.python.org/3/library/tkinter.html#tkinter.Tk
         """
         if hdpi:
             utility.enable_high_dpi_awareness()
 
-        super().__init__()
+        super().__init__(**kwargs)
         self.winsys = self.tk.call('tk', 'windowingsystem')
 
         if scaling is not None:
@@ -246,43 +260,49 @@ class Window(tkinter.Tk):
         if size is not None:
             width, height = size
             self.geometry(f"{width}x{height}")
-        
+
         if position is not None:
             xpos, ypos = position
             self.geometry(f"+{xpos}+{ypos}")
-        
+
         if minsize is not None:
             width, height = minsize
             self.minsize(width, height)
-        
+
         if maxsize is not None:
             width, height = maxsize
             self.maxsize(width, height)
-        
+
         if resizable is not None:
             width, height = resizable
             self.resizable(width, height)
-        
+
         if transient is not None:
             self.transient(transient)
-        
+
         if overrideredirect:
             self.overrideredirect(1)
-        
+
         if alpha is not None:
             if self.winsys == 'x11':
-                self.wait_visibility(self)
-            self.attributes("-alpha", alpha)
+                self.alpha = alpha
+                self.alpha_bind = self.bind("<Visibility>", on_visibility, '+')
+            else:
+                self.attributes("-alpha", alpha)
 
         apply_class_bindings(self)
         apply_all_bindings(self)
         self._style = Style(themename)
 
-
     @property
     def style(self):
         """Return a reference to the `ttkbootstrap.style.Style` object."""
         return self._style
+
+    def destroy(self):
+        """Destroy the window and all its children."""
+        self._style.instance = None
+        super().destroy()
 
     def place_window_center(self):
         """Position the toplevel in the center of the screen. Does not
@@ -296,7 +316,7 @@ class Window(tkinter.Tk):
         ypos = (s_height - w_height) // 2
         self.geometry(f'+{xpos}+{ypos}')
 
-    position_center = place_window_center # alias
+    position_center = place_window_center  # alias
 
 
 class Toplevel(tkinter.Toplevel):
@@ -317,21 +337,21 @@ class Toplevel(tkinter.Toplevel):
     """
 
     def __init__(
-        self,
-        title="ttkbootstrap",
-        iconphoto='',
-        size=None,
-        position=None,
-        minsize=None,
-        maxsize=None,
-        resizable=None,
-        transient=None,
-        overrideredirect=False,
-        windowtype=None,
-        topmost=False,
-        toolwindow=False,
-        alpha=1.0,
-        **kwargs,
+            self,
+            title="ttkbootstrap",
+            iconphoto='',
+            size=None,
+            position=None,
+            minsize=None,
+            maxsize=None,
+            resizable=None,
+            transient=None,
+            overrideredirect=False,
+            windowtype=None,
+            topmost=False,
+            toolwindow=False,
+            alpha=1.0,
+            **kwargs,
     ):
         """
         Parameters:
@@ -414,9 +434,6 @@ class Toplevel(tkinter.Toplevel):
 
         super().__init__(**kwargs)
         self.winsys = self.tk.call('tk', 'windowingsystem')
-        
-        if iconify:
-            self.iconify()
 
         if iconphoto != '':
             try:
@@ -437,11 +454,11 @@ class Toplevel(tkinter.Toplevel):
         if position is not None:
             xpos, ypos = position
             self.geometry(f"+{xpos}+{ypos}")
-        
+
         if minsize is not None:
             width, height = minsize
             self.minsize(width, height)
-        
+
         if maxsize is not None:
             width, height = maxsize
             self.maxsize(width, height)
@@ -449,28 +466,33 @@ class Toplevel(tkinter.Toplevel):
         if resizable is not None:
             width, height = resizable
             self.resizable(width, height)
-        
+
+        if iconify:
+            self.iconify()
+
         if transient is not None:
             self.transient(transient)
-        
+
         if overrideredirect:
             self.overrideredirect(1)
-        
+
         if windowtype is not None:
             if self.winsys == 'x11':
                 self.attributes("-type", windowtype)
-        
+
         if topmost:
             self.attributes("-topmost", 1)
-        
+
         if toolwindow:
             if self.winsys == 'win32':
                 self.attributes("-toolwindow", 1)
-        
+
         if alpha is not None:
             if self.winsys == 'x11':
-                self.wait_visibility(self)
-            self.attributes("-alpha", alpha)
+                self.alpha = alpha
+                self.alpha_bind = self.bind("<Visibility>", on_visibility, '+')
+            else:
+                self.attributes("-alpha", alpha)
 
     @property
     def style(self):
@@ -489,14 +511,14 @@ class Toplevel(tkinter.Toplevel):
         ypos = (s_height - w_height) // 2
         self.geometry(f'+{xpos}+{ypos}')
 
-    position_center = place_window_center # alias
+    position_center = place_window_center  # alias
+
 
 if __name__ == "__main__":
-
     root = Window(themename="superhero", alpha=0.5, size=(1000, 1000))
-    #root.withdraw()
+    # root.withdraw()
     root.place_window_center()
-    #root.deiconify()
+    # root.deiconify()
 
     top = Toplevel(title="My Toplevel", alpha=0.4, size=(1000, 1000))
     top.place_window_center()

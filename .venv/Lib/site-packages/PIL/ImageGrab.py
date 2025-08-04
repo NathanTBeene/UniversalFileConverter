@@ -26,7 +26,13 @@ import tempfile
 from . import Image
 
 
-def grab(bbox=None, include_layered_windows=False, all_screens=False, xdisplay=None):
+def grab(
+    bbox: tuple[int, int, int, int] | None = None,
+    include_layered_windows: bool = False,
+    all_screens: bool = False,
+    xdisplay: str | None = None,
+) -> Image.Image:
+    im: Image.Image
     if xdisplay is None:
         if sys.platform == "darwin":
             fh, filepath = tempfile.mkstemp(".png")
@@ -63,14 +69,16 @@ def grab(bbox=None, include_layered_windows=False, all_screens=False, xdisplay=N
                 left, top, right, bottom = bbox
                 im = im.crop((left - x0, top - y0, right - x0, bottom - y0))
             return im
+    # Cast to Optional[str] needed for Windows and macOS.
+    display_name: str | None = xdisplay
     try:
         if not Image.core.HAVE_XCB:
             msg = "Pillow was built without XCB support"
             raise OSError(msg)
-        size, data = Image.core.grabscreen_x11(xdisplay)
+        size, data = Image.core.grabscreen_x11(display_name)
     except OSError:
         if (
-            xdisplay is None
+            display_name is None
             and sys.platform not in ("darwin", "win32")
             and shutil.which("gnome-screenshot")
         ):
@@ -94,7 +102,7 @@ def grab(bbox=None, include_layered_windows=False, all_screens=False, xdisplay=N
         return im
 
 
-def grabclipboard():
+def grabclipboard() -> Image.Image | list[str] | None:
     if sys.platform == "darwin":
         fh, filepath = tempfile.mkstemp(".png")
         os.close(fh)
@@ -149,18 +157,7 @@ def grabclipboard():
             session_type = None
 
         if shutil.which("wl-paste") and session_type in ("wayland", None):
-            output = subprocess.check_output(["wl-paste", "-l"]).decode()
-            mimetypes = output.splitlines()
-            if "image/png" in mimetypes:
-                mimetype = "image/png"
-            elif mimetypes:
-                mimetype = mimetypes[0]
-            else:
-                mimetype = None
-
-            args = ["wl-paste"]
-            if mimetype:
-                args.extend(["-t", mimetype])
+            args = ["wl-paste", "-t", "image"]
         elif shutil.which("xclip") and session_type in ("x11", None):
             args = ["xclip", "-selection", "clipboard", "-t", "image/png", "-o"]
         else:
@@ -168,10 +165,29 @@ def grabclipboard():
             raise NotImplementedError(msg)
 
         p = subprocess.run(args, capture_output=True)
-        err = p.stderr
-        if err:
-            msg = f"{args[0]} error: {err.strip().decode()}"
+        if p.returncode != 0:
+            err = p.stderr
+            for silent_error in [
+                # wl-paste, when the clipboard is empty
+                b"Nothing is copied",
+                # Ubuntu/Debian wl-paste, when the clipboard is empty
+                b"No selection",
+                # Ubuntu/Debian wl-paste, when an image isn't available
+                b"No suitable type of content copied",
+                # wl-paste or Ubuntu/Debian xclip, when an image isn't available
+                b" not available",
+                # xclip, when an image isn't available
+                b"cannot convert ",
+                # xclip, when the clipboard isn't initialized
+                b"xclip: Error: There is no owner for the ",
+            ]:
+                if silent_error in err:
+                    return None
+            msg = f"{args[0]} error"
+            if err:
+                msg += f": {err.strip().decode()}"
             raise ChildProcessError(msg)
+
         data = io.BytesIO(p.stdout)
         im = Image.open(data)
         im.load()
